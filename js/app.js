@@ -26,6 +26,15 @@
 
   function typeInfo(t) { return C.types[t] || { icon: "❓", color: "#8b93a7" }; }
 
+  // Icon for a stat/set id: custom image > inline SVG (data/icons.js) > emoji.
+  function icon(id, cfg) {
+    cfg = cfg || {};
+    if (cfg.image) return '<img class="icon-img" src="' + esc(cfg.image) + '" alt="">';
+    var key = cfg.svg || id;
+    if (window.ICONS && window.ICONS[key]) return '<span class="icon-svg">' + window.ICONS[key] + "</span>";
+    return cfg.icon || "❓";
+  }
+
   // Portrait: uses the image if it loads, otherwise a colored letter box.
   function phHtml(letter, color) {
     return '<div class="ph" style="background:linear-gradient(145deg,' + color + "33," + color + '66)">' +
@@ -226,12 +235,12 @@
       var set = C.sets[m.set];
       var setHtml = set
         ? '<span class="set-chip" style="color:' + set.color + ';border-color:' + set.color + '55">' +
-          set.icon + " " + esc(set.name) + (set.nameTh ? ' <small style="color:var(--text-dim)">' + esc(set.nameTh) + "</small>" : "") + "</span>"
+          icon(m.set, set) + " " + esc(set.name) + (set.nameTh ? ' <small style="color:var(--text-dim)">' + esc(set.nameTh) + "</small>" : "") + "</span>"
         : '<span class="set-chip">-</span>';
 
       var statRows = (m.stats || []).map(function (s) {
         var st = C.stats[s.stat] || { icon: "❓", name: s.stat, nameTh: "" };
-        return '<div class="stat-row"><span class="s-icon">' + st.icon + '</span>' +
+        return '<div class="stat-row"><span class="s-icon">' + icon(s.stat, st) + '</span>' +
           '<span class="s-name">' + esc(st.name) + (st.nameTh ? " / " + esc(st.nameTh) : "") + "</span>" +
           '<span class="s-val">' + esc(s.value) + "</span></div>";
       }).join("");
@@ -240,7 +249,7 @@
       if (m.dedicated) {
         var ds = C.stats[m.dedicated.stat] || { icon: "❓", name: m.dedicated.stat, nameTh: "" };
         ded = '<div><div class="m-section-label">Dedicated Option / ออปชั่นเฉพาะ</div>' +
-          '<div class="stat-row dedicated-row"><span class="s-icon">' + ds.icon + '</span>' +
+          '<div class="stat-row dedicated-row"><span class="s-icon">' + icon(m.dedicated.stat, ds) + '</span>' +
           '<span class="s-name">' + esc(ds.name) + (ds.nameTh ? " / " + esc(ds.nameTh) : "") + "</span>" +
           '<span class="s-val">' + esc(m.dedicated.value) + "</span></div></div>";
       }

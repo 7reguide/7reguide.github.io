@@ -49,7 +49,7 @@ window.CONFIG = {
     lifesteal: { name: "Lifesteal",   nameTh: "ดูดเลือด",   icon: "🩸", color: "#d64562" },
     counter:   { name: "Counter",     nameTh: "สวนกลับ",    icon: "🔄", color: "#e5b84d" },
     critres:   { name: "Crit Resist", nameTh: "ต้านคริ",    icon: "🚫", color: "#9aa4b2" },
-    evasion:   { name: "Evasion",     nameTh: "หลบหลีก",    icon: "💨", color: "#6bd0e5" }
+    evasion:   { name: "Evasion",     nameTh: "หลบหลีก",    icon: "💨", color: "#6bd0e5", svg: "eva" }
   },
 
   // Target stats / สเตตัสเป้าหมาย
