@@ -92,6 +92,7 @@
       homeCard("#/characters", "🧙", "Characters", "All heroes with type, role and builds. / ตัวละครทั้งหมด") +
       homeCard("#/tier-list", "🏆", "Tier List", "GvG · Arena · Total War rankings. / จัดอันดับตัวละคร") +
       homeCard("#/gvg", "⚔️", "GvG Builds", "Item sets, target stats, dedicated options, pets and notes. / บิลด์กิลด์วอร์") +
+      homeCard("#/builder", "🛠️", "Team Builder", "Build a team visually and get the code for gvg.js. / สร้างทีมแบบคลิกเลือก") +
       "</div>";
   }
 
@@ -296,6 +297,180 @@
       (GVG.length ? GVG.map(gvgCard).join("") : '<div class="empty">No builds yet.</div>');
   }
 
+  // ---------- team builder ----------
+  var BKEY = "7re-builder-draft";
+  var B = null;
+
+  function emptyMember() {
+    return { charId: "", position: "B", set: "",
+      stats: [{ stat: "", value: "" }, { stat: "", value: "" }, { stat: "", value: "" }],
+      dedicated: { stat: "", value: "" } };
+  }
+  function defaultBuild() {
+    return { tier: "A+", boots: "-", skillOrder: ["", "", ""],
+      members: [emptyMember(), emptyMember(), emptyMember()],
+      pets: ["", "", ""], notes: "" };
+  }
+  function loadBuild() {
+    if (B) return B;
+    try { B = JSON.parse(localStorage.getItem(BKEY) || "null"); } catch (e) { B = null; }
+    if (!B || !B.members || B.members.length !== 3) B = defaultBuild();
+    return B;
+  }
+  function saveBuild() { try { localStorage.setItem(BKEY, JSON.stringify(B)); } catch (e) {} }
+
+  function selOpts(pairs, selected, placeholder) {
+    var html = '<option value="">' + esc(placeholder) + "</option>";
+    pairs.forEach(function (p) {
+      html += '<option value="' + esc(p[0]) + '"' + (p[0] === selected ? " selected" : "") + ">" + esc(p[1]) + "</option>";
+    });
+    return html;
+  }
+
+  // Builder state -> clean team object (same shape as data/gvg.js entries)
+  function buildTeamObj() {
+    var t = { tier: B.tier || "A+", boots: B.boots || "-" };
+    var so = (B.skillOrder || []).filter(Boolean);
+    if (so.length) t.skillOrder = so;
+    t.members = [];
+    (B.members || []).forEach(function (m) {
+      if (!m.charId) return;
+      var mm = { charId: m.charId, position: m.position || "B" };
+      if (m.set) mm.set = m.set;
+      mm.stats = (m.stats || []).filter(function (s) { return s.stat; })
+        .map(function (s) { return { stat: s.stat, value: s.value || "" }; });
+      if (m.dedicated && m.dedicated.stat) mm.dedicated = { stat: m.dedicated.stat, value: m.dedicated.value || "" };
+      t.members.push(mm);
+    });
+    var pets = (B.pets || []).filter(Boolean);
+    if (pets.length) t.pets = pets;
+    if (B.notes) t.notes = B.notes;
+    return t;
+  }
+
+  function teamToCode(t) {
+    var L = ["  {"];
+    L.push("    tier: " + JSON.stringify(t.tier) + ",");
+    L.push("    boots: " + JSON.stringify(t.boots) + ",");
+    if (t.skillOrder) L.push("    skillOrder: [" + t.skillOrder.map(function (s) { return JSON.stringify(s); }).join(", ") + "],");
+    L.push("    members: [");
+    t.members.forEach(function (m, i) {
+      L.push("      {");
+      L.push("        charId: " + JSON.stringify(m.charId) + ", position: " + JSON.stringify(m.position) +
+        (m.set ? ", set: " + JSON.stringify(m.set) : "") + ",");
+      L.push("        stats: [");
+      m.stats.forEach(function (s, j) {
+        L.push("          { stat: " + JSON.stringify(s.stat) + ", value: " + JSON.stringify(s.value) + " }" +
+          (j < m.stats.length - 1 ? "," : ""));
+      });
+      L.push("        ]" + (m.dedicated ? "," : ""));
+      if (m.dedicated) L.push("        dedicated: { stat: " + JSON.stringify(m.dedicated.stat) + ", value: " + JSON.stringify(m.dedicated.value) + " }");
+      L.push("      }" + (i < t.members.length - 1 ? "," : ""));
+    });
+    L.push("    ]" + (t.pets || t.notes ? "," : ""));
+    if (t.pets) L.push("    pets: [" + t.pets.map(function (p) { return JSON.stringify(p); }).join(", ") + "]" + (t.notes ? "," : ""));
+    if (t.notes) L.push("    notes: " + JSON.stringify(t.notes));
+    L.push("  },");
+    return L.join("\n");
+  }
+
+  function viewBuilder() {
+    setNav("builder");
+    loadBuild();
+    var charPairs = CHARS.map(function (c) { return [c.id, c.name + (c.nameTh ? " / " + c.nameTh : "")]; });
+    var setPairs = Object.keys(C.sets).map(function (id) { var s = C.sets[id]; return [id, s.name + (s.nameTh ? " / " + s.nameTh : "")]; });
+    var statPairs = Object.keys(C.stats).map(function (id) { var s = C.stats[id]; return [id, s.name + (s.nameTh ? " / " + s.nameTh : "")]; });
+    var petPairs = Object.keys(C.pets).map(function (id) { return [id, C.pets[id].name]; });
+
+    var memberCols = B.members.map(function (m, i) {
+      var statRows = m.stats.map(function (s, j) {
+        return '<div class="b-row">' +
+          '<select class="b-stat" data-m="' + i + '" data-s="' + j + '">' + selOpts(statPairs, s.stat, "— stat —") + "</select>" +
+          '<input type="text" class="b-val" data-m="' + i + '" data-s="' + j + '" value="' + esc(s.value) + '" placeholder="100 / เยอะๆ">' +
+          "</div>";
+      }).join("");
+      return '<div class="b-member">' +
+        '<div class="b-mtitle">Character ' + (i + 1) + "</div>" +
+        '<label>ตัวละคร</label><select class="b-char" data-m="' + i + '">' + selOpts(charPairs, m.charId, "— เลือกตัวละคร —") + "</select>" +
+        '<label>ตำแหน่ง</label><select class="b-pos" data-m="' + i + '">' +
+          '<option value="B"' + (m.position !== "F" ? " selected" : "") + '>B · Back / หลัง</option>' +
+          '<option value="F"' + (m.position === "F" ? " selected" : "") + '>F · Front / หน้า</option>' +
+        "</select>" +
+        '<label>1) Item Set / เซ็ตของสวมใส่</label><select class="b-set" data-m="' + i + '">' + selOpts(setPairs, m.set, "— เลือกเซ็ต —") + "</select>" +
+        '<label>2) Main Stats / สเตตัสหลัก (3 แถว)</label>' + statRows +
+        '<label>3) Tuning / Dedicated · ออปชั่นเฉพาะ</label>' +
+        '<div class="b-row">' +
+          '<select class="b-dstat" data-m="' + i + '">' + selOpts(statPairs, m.dedicated.stat, "— stat —") + "</select>" +
+          '<input type="text" class="b-dval" data-m="' + i + '" value="' + esc(m.dedicated.value) + '" placeholder="เยอะๆ">' +
+        "</div>" +
+      "</div>";
+    }).join("");
+
+    app.innerHTML =
+      '<h1 class="page-title">Team Builder</h1>' +
+      '<p class="page-sub">เลือกตัวละคร 3 ตัว + สัตว์เลี้ยง → เซ็ตของ → สเตตัสหลัก 3 แถว → Tuning แล้วคัดลอกโค้ดไปวางใน <code>data/gvg.js</code></p>' +
+      '<div class="builder" id="builder">' +
+      '<div class="b-panel"><div class="b-mtitle">Team / ทีม</div><div class="b-team">' +
+        '<div><label>Tier</label><select id="b-tier">' + C.tierOrder.map(function (t) { return "<option" + (t === B.tier ? " selected" : "") + ">" + t + "</option>"; }).join("") + "</select></div>" +
+        '<div><label>Boots / ความเร็ว</label><input type="text" id="b-boots" value="' + esc(B.boots) + '"></div>' +
+        '<div><label>Skill order / ลำดับสกิล</label><div class="b-row">' + [0, 1, 2].map(function (k) { return '<input type="text" class="b-so" data-k="' + k + '" value="' + esc(B.skillOrder[k] || "") + '" maxlength="2">'; }).join("") + "</div></div>" +
+        '<div><label>Pets / สัตว์เลี้ยง</label><div class="b-row">' + [0, 1, 2].map(function (k) { return '<select class="b-pet" data-k="' + k + '">' + selOpts(petPairs, B.pets[k] || "", "— pet —") + "</select>"; }).join("") + "</div></div>" +
+        '<div class="b-notes"><label>Notes / หมายเหตุ</label><textarea id="b-notes" rows="3">' + esc(B.notes) + "</textarea></div>" +
+      "</div></div>" +
+      '<div class="b-members">' + memberCols + "</div>" +
+      '<h2 class="section-title">Preview <small>ตัวอย่าง</small></h2><div id="b-preview"></div>' +
+      '<h2 class="section-title">Code <small>คัดลอกไปวางต่อท้ายใน DATA_GVG (data/gvg.js)</small></h2>' +
+      '<textarea id="b-code" class="b-code" rows="16" readonly></textarea>' +
+      '<div class="b-actions"><button class="btn" id="b-copy">📋 Copy code</button><button class="btn ghost" id="b-reset">Reset</button></div>' +
+      "</div>";
+
+    var box = document.getElementById("builder");
+
+    function readState() {
+      B.tier = document.getElementById("b-tier").value;
+      B.boots = document.getElementById("b-boots").value;
+      B.skillOrder = [].map.call(box.querySelectorAll(".b-so"), function (e) { return e.value.trim(); });
+      B.pets = [].map.call(box.querySelectorAll(".b-pet"), function (e) { return e.value; });
+      B.notes = document.getElementById("b-notes").value;
+      B.members.forEach(function (m, i) {
+        m.charId = box.querySelector('.b-char[data-m="' + i + '"]').value;
+        m.position = box.querySelector('.b-pos[data-m="' + i + '"]').value;
+        m.set = box.querySelector('.b-set[data-m="' + i + '"]').value;
+        m.stats.forEach(function (s, j) {
+          s.stat = box.querySelector('.b-stat[data-m="' + i + '"][data-s="' + j + '"]').value;
+          s.value = box.querySelector('.b-val[data-m="' + i + '"][data-s="' + j + '"]').value;
+        });
+        m.dedicated.stat = box.querySelector('.b-dstat[data-m="' + i + '"]').value;
+        m.dedicated.value = box.querySelector('.b-dval[data-m="' + i + '"]').value;
+      });
+    }
+
+    function updateOut() {
+      var t = buildTeamObj();
+      document.getElementById("b-preview").innerHTML = t.members.length
+        ? gvgCard(t)
+        : '<div class="empty">เลือกตัวละครอย่างน้อย 1 ตัว เพื่อดูตัวอย่างทีม</div>';
+      document.getElementById("b-code").value = t.members.length ? teamToCode(t) : "";
+      fixPortraits();
+    }
+
+    box.addEventListener("input", function () { readState(); saveBuild(); updateOut(); });
+
+    document.getElementById("b-copy").addEventListener("click", function () {
+      var ta = document.getElementById("b-code");
+      var btn = this;
+      function okMsg() { btn.textContent = "✔ Copied!"; setTimeout(function () { btn.textContent = "📋 Copy code"; }, 1600); }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(ta.value).then(okMsg, function () { ta.select(); document.execCommand("copy"); okMsg(); });
+      } else { ta.select(); document.execCommand("copy"); okMsg(); }
+    });
+    document.getElementById("b-reset").addEventListener("click", function () {
+      B = defaultBuild(); saveBuild(); viewBuilder();
+    });
+
+    updateOut();
+  }
+
   // ---------- router ----------
   function render() {
     var hash = location.hash.replace(/^#\/?/, "");
@@ -307,6 +482,7 @@
     else if (parts[0] === "characters") viewCharacters();
     else if (parts[0] === "tier-list") viewTierList(parts[1] || "");
     else if (parts[0] === "gvg") viewGvg();
+    else if (parts[0] === "builder") viewBuilder();
     else viewHome();
     fixPortraits();
   }
