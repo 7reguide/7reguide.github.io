@@ -4,7 +4,12 @@
 // Each entry is one team card (like the spreadsheet row):
 //   tier        tier badge, e.g. "A+"  (colors in config.js)
 //   boots       speed requirement shown under the tier ("-" = none)
-//   skillOrder  skill order / ลำดับสกิล, e.g. ["2","1","3"]
+//   formation   optional: "b3f2" | "b2f3" | "b4f1" | "b1f4"
+//               (position formation — see config.js formations)
+//   skillOrder  skill order / ลำดับสกิล — two formats work:
+//                 simple text:  ["2", "1", "3"]
+//                 from Builder: [{ charId: "kyle", skill: "active1" }, ...]
+//                 (skill: "active1" | "active2" | "awakening")
 //   members     1-5 characters, each with:
 //     charId     id from data/characters.js
 //     position   "F" = front / หน้า, "B" = back / หลัง

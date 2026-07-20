@@ -38,6 +38,16 @@ window.CONFIG = {
     { id: "totalwar", label: "Total War" }
   ],
 
+  // Position formations / รูปแบบตำแหน่ง (5 slots = back + front)
+  // backBonus / frontBonus = stat bonus each row gets in that formation.
+  formationOrder: ["b3f2", "b2f3", "b4f1", "b1f4"],
+  formations: {
+    b3f2: { name: "Back 3 · Front 2", back: 3, front: 2, backBonus: "14%",   frontBonus: "21%" },
+    b2f3: { name: "Back 2 · Front 3", back: 2, front: 3, backBonus: "21%",   frontBonus: "14%" },
+    b4f1: { name: "Back 4 · Front 1", back: 4, front: 1, backBonus: "10.5%", frontBonus: "42%" },
+    b1f4: { name: "Back 1 · Front 4", back: 1, front: 4, backBonus: "42%",   frontBonus: "10.5%" }
+  },
+
   // Item sets / เซ็ตของสวมใส่
   sets: {
     crit:      { name: "Crit",        nameTh: "คริ",        icon: "🎯", color: "#b16bff" },
